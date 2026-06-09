@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tech with Pritam</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <header class="site-header">
+        <div class="header-inner">
+            <div class="header-brand">
+                <span class="brand-bracket">&lt;</span>
+                <span class="brand-name">Tech with Rajen</span>
+                <span class="brand-bracket">/&gt;</span>
+            </div>
+            <p class="header-sub">Three-Tier Architecture · AWS · Full Stack</p>
+        </div>
+        <div class="header-dots" aria-hidden="true">
+            <span></span><span></span><span></span>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <section class="card" id="messages-section">
+            <div class="card-header">
+                <div class="card-label">
+                    <span class="label-dot dot-green"></span>
+                    Live from Database
+                </div>
+                <span class="card-badge">MySQL · RDS</span>
+            </div>
+            <div id="message-box" class="message-box">
+                <div class="loading-state">
+                    <span class="spinner"></span>
+                    <span>Fetching messages…</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="card" id="form-section">
+            <div class="card-header">
+                <div class="card-label">
+                    <span class="label-dot dot-blue"></span>
+                    Post a Message
+                </div>
+                <span class="card-badge">PHP · API</span>
+            </div>
+            <form id="message-form" novalidate>
+                <div class="form-group">
+                    <label for="message">Your message</label>
+                    <div class="input-wrap">
+                        <span class="input-prefix" aria-hidden="true">&gt;_</span>
+                        <input type="text" id="message" name="message" placeholder="Type something and hit Save…" required autocomplete="off">
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">
+                    <span class="btn-text">Save Message</span>
+                    <span class="btn-icon" aria-hidden="true">↵</span>
+                </button>
+            </form>
+        </section>
+
+    </main>
+
+    <footer class="site-footer">
+        <p>Built by <strong>Pritam</strong> · Three-Tier AWS Architecture Demo</p>
+        <p class="footer-stack">NGINX · PHP · MySQL · EC2 · RDS · ALB</p>
+    </footer>
+
+    <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            fetchMessages();
+
+            const form = document.getElementById('message-form');
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const input = document.getElementById('message');
+                const message = input.value.trim();
+                if (!message) return;
+
+                const btn = form.querySelector('.btn-primary');
+                btn.classList.add('loading');
+                btn.disabled = true;
+
+                fetch('api/save_message.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'message=' + encodeURIComponent(message)
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        input.value = '';
+                        fetchMessages();
+                        showToast('Message saved successfully.', 'success');
+                    } else {
+                        showToast('Error: ' + data.error, 'error');
+                    }
+                })
+                .catch(() => showToast('Could not reach the server.', 'error'))
+                .finally(() => {
+                    btn.classList.remove('loading');
+                    btn.disabled = false;
+                });
+            });
+        });
+
+        function fetchMessages() {
+            const box = document.getElementById('message-box');
+            box.innerHTML = '<div class="loading-state"><span class="spinner"></span><span>Fetching messages…</span></div>';
+
+            fetch('api/get_messages.php')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.messages.length === 0) {
+                            box.innerHTML = '<p class="empty-state">No messages yet. Add the first one below ↓</p>';
+                        } else {
+                            let html = '<ul class="msg-list">';
+                            data.messages.forEach(msg => {
+                                html += `<li class="msg-item">
+                                    <span class="msg-text">${msg.message}</span>
+                                    <span class="msg-time">${msg.created_at}</span>
+                                </li>`;
+                            });
+                            html += '</ul>';
+                            box.innerHTML = html;
+                        }
+                    } else {
+                        box.innerHTML = '<p class="error-state">⚠ ' + data.error + '</p>';
+                    }
+                })
+                .catch(() => {
+                    box.innerHTML = '<p class="error-state">⚠ Failed to load messages. Check your connection.</p>';
+                });
+        }
+
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show ' + type;
+            setTimeout(() => { toast.className = 'toast'; }, 3500);
+        }
+    </script>
+</body>
+</html>
